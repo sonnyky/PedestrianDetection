@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 import cv2
 import time
-
+import pyrealsense2 as rs
 
 class DetectorAPI:
     def __init__(self, path_to_ckpt):
