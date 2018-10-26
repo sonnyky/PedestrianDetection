@@ -70,6 +70,11 @@ if __name__ == "__main__":
     config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
+    # define the upper and lower boundaries of the HSV pixel
+    # intensities to be considered 'skin'
+    lower = np.array([0, 48, 80], dtype="uint8")
+    upper = np.array([20, 255, 255], dtype="uint8")
+
     # Start streaming
 
     profile = pipeline.start(config)
@@ -134,8 +139,36 @@ if __name__ == "__main__":
                 box = boxes[i]
                 cv2.rectangle(img,(box[1],box[0]),(box[3],box[2]),(255,0,0),2)
 
-                #mid_point_x = (box[3] - box[1]) / 2;
+                if(box[3] - box[1] > 0) and ( box[2] - box[0] > 0):
+                    # Find contour of people inside the boxes (set ROI)
+                    human_roi = img[box[0] + 30:box[2] -30, box[1] + 30 :box[3] - 30]
 
+
+                    converted = cv2.cvtColor(human_roi, cv2.COLOR_BGR2HSV)
+                    skinMask = cv2.inRange(converted, lower, upper)
+
+                    # apply a series of erosions and dilations to the mask
+                    # using an elliptical kernel
+                    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
+                    skinMask = cv2.erode(skinMask, kernel, iterations=2)
+                    skinMask = cv2.dilate(skinMask, kernel, iterations=2)
+
+                    # blur the mask to help remove noise, then apply the
+                    # mask to the frame
+                    skinMask = cv2.GaussianBlur(skinMask, (3, 3), 0)
+                    skin = cv2.bitwise_and(human_roi, human_roi, mask=skinMask)
+
+                    #cv2.imshow("images", np.hstack([human_roi, skin]))
+
+
+                    human_roi_gray = cv2.cvtColor(skin, cv2.COLOR_BGR2GRAY);
+                    ret, thresh = cv2.threshold(human_roi_gray, 127, 255, 0)
+                    # show the skin in the image along with the mask
+
+                # Find contours in the roi
+                    _, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    cv2.drawContours(img, contours, -1, (128,255,255),
+                    3, cv2.LINE_AA, hierarchy )
 
                 depth_top = aligned_depth_frame.get_distance(box[1], box[0])
                 depth_bottom = aligned_depth_frame.get_distance(box[3], box[2])
@@ -150,6 +183,9 @@ if __name__ == "__main__":
                 human_height_vector = np.asanyarray(depth_bottom_point) - np.asanyarray(depth_top_point)
                 human_height = np.linalg.norm(human_height_vector)
 
+                height_value = str( human_height )+ " m"
+
+                cv2.putText(img, height_value, (box[1], box[0]+35), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
                 print("*************************************************************************************")
                 print("depth_top_point : ", depth_top_point)
                 print("depth_bottom_point : ", depth_bottom_point)
