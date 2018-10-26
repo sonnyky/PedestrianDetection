@@ -75,6 +75,9 @@ if __name__ == "__main__":
     lower = np.array([0, 48, 80], dtype="uint8")
     upper = np.array([20, 255, 255], dtype="uint8")
 
+    # Create the haar cascade
+    faceCascade = cv2.CascadeClassifier("cascade.xml")
+
     # Start streaming
 
     profile = pipeline.start(config)
@@ -141,51 +144,73 @@ if __name__ == "__main__":
 
                 if(box[3] - box[1] > 0) and ( box[2] - box[0] > 0):
                     # Find contour of people inside the boxes (set ROI)
-                    human_roi = img[box[0] + 30:box[2] -30, box[1] + 30 :box[3] - 30]
+                    human_roi = img[box[0]:box[2], box[1]:box[3]]
 
 
-                    converted = cv2.cvtColor(human_roi, cv2.COLOR_BGR2HSV)
-                    skinMask = cv2.inRange(converted, lower, upper)
+                    #converted = cv2.cvtColor(human_roi, cv2.COLOR_BGR2HSV)
+                    #skinMask = cv2.inRange(converted, lower, upper)
 
                     # apply a series of erosions and dilations to the mask
                     # using an elliptical kernel
-                    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
-                    skinMask = cv2.erode(skinMask, kernel, iterations=2)
-                    skinMask = cv2.dilate(skinMask, kernel, iterations=2)
+                    #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
+                    #skinMask = cv2.erode(skinMask, kernel, iterations=2)
+                    #skinMask = cv2.dilate(skinMask, kernel, iterations=2)
 
                     # blur the mask to help remove noise, then apply the
                     # mask to the frame
-                    skinMask = cv2.GaussianBlur(skinMask, (3, 3), 0)
-                    skin = cv2.bitwise_and(human_roi, human_roi, mask=skinMask)
+                    #skinMask = cv2.GaussianBlur(skinMask, (3, 3), 0)
+                    #skin = cv2.bitwise_and(human_roi, human_roi, mask=skinMask)
 
                     #cv2.imshow("images", np.hstack([human_roi, skin]))
 
 
-                    human_roi_gray = cv2.cvtColor(skin, cv2.COLOR_BGR2GRAY);
-                    ret, thresh = cv2.threshold(human_roi_gray, 127, 255, 0)
+                    human_roi_gray = cv2.cvtColor(human_roi, cv2.COLOR_BGR2GRAY);
+                    #ret, thresh = cv2.threshold(human_roi_gray, 127, 255, 0)
+
+                    # Detect faces in the image
+                    faces = faceCascade.detectMultiScale(
+                        human_roi_gray,
+                        scaleFactor=1.1,
+                        minNeighbors=5
+                    )
+                    print ("Found {0} faces!".format(len(faces)))
+                    thresh = cv2.Canny(human_roi_gray,180,200)
+                    cv2.imshow("images", thresh)
+
+
                     # show the skin in the image along with the mask
 
                 # Find contours in the roi
                     _, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                    cv2.drawContours(img, contours, -1, (128,255,255),
-                    3, cv2.LINE_AA, hierarchy )
-
-                depth_top = aligned_depth_frame.get_distance(box[1], box[0])
-                depth_bottom = aligned_depth_frame.get_distance(box[3], box[2])
+                    cv2.drawContours(img, contours, -1, (128, 255, 255),
+                    3, cv2.LINE_AA, hierarchy, 2, (box[1],box[0]) )
 
 
+####################################################################################################################
+
+                midpoint_x = np.int(box[1] + ((box[3] - box[1]) / 2))
+
+                depth_top = aligned_depth_frame.get_distance(midpoint_x, box[0] + 20)
+                depth_bottom = aligned_depth_frame.get_distance(midpoint_x, box[2])
+                print("midpoint_x : " + str(midpoint_x))
                 depth_top_point = rs.rs2_deproject_pixel_to_point(
-                                color_intrin, [box[1], box[0]], depth_top)
+                                color_intrin, [midpoint_x, box[0]+20], depth_top)
 
                 depth_bottom_point = rs.rs2_deproject_pixel_to_point(
-                    color_intrin, [box[3], box[2]], depth_bottom)
+                    color_intrin, [midpoint_x, box[2]], depth_bottom)
+
+####################################################################################################################
+
+
 
                 human_height_vector = np.asanyarray(depth_bottom_point) - np.asanyarray(depth_top_point)
+
                 human_height = np.linalg.norm(human_height_vector)
+                human_height = np.round(human_height, 3)
 
-                height_value = str( human_height )+ " m"
+                height_value = str(human_height) + " m"
 
-                cv2.putText(img, height_value, (box[1], box[0]+35), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
+                cv2.putText(img, height_value, (box[1], box[0]+35), cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
                 print("*************************************************************************************")
                 print("depth_top_point : ", depth_top_point)
                 print("depth_bottom_point : ", depth_bottom_point)
