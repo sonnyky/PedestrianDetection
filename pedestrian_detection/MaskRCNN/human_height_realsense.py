@@ -39,7 +39,21 @@ class DetectorAPI:
         image_np_expanded = np.expand_dims(image, axis=0)
         # Actual detection.
         start_time = time.time()
-        (boxes, scores, classes, num, masks) = self.sess.run(
+        detection_boxes = tf.squeeze(self.detection_boxes, [0])
+        detection_masks = tf.squeeze(self.detection_masks, [0])
+        real_num_detection = tf.cast(self.num_detections[0], tf.int32)
+        detection_boxes = tf.slice(detection_boxes, [0, 0], [real_num_detection, -1])
+        detection_masks = tf.slice(detection_masks, [0, 0, 0], [real_num_detection, -1, -1])
+        #detection_masks_reframed = utils_ops.reframe_box_masks_to_image_masks(
+        #    detection_masks, detection_boxes, image.shape[0], image.shape[1])
+        #detection_masks_reframed = tf.cast(
+        #    tf.greater(detection_masks_reframed, 0.5), tf.uint8)
+        # Follow the convention by adding back the batch dimension
+        #self.detection_masks = tf.expand_dims(
+        #    detection_masks_reframed, 0)
+
+
+        (boxes, scores, classes, num, detection_masks) = self.sess.run(
             [self.detection_boxes, self.detection_scores, self.detection_classes, self.num_detections, self.detection_masks],
             feed_dict={self.image_tensor: image_np_expanded})
         end_time = time.time()
@@ -47,14 +61,14 @@ class DetectorAPI:
         #print("Elapsed Time:", end_time-start_time)
 
         im_height, im_width,_ = image.shape
-        boxes_list = [None for i in range(boxes.shape[1])]
-        for i in range(boxes.shape[1]):
+        boxes_list = [None for i in range(boxes.shape[0])]
+        for i in range(boxes.shape[0]):
             boxes_list[i] = (int(boxes[0,i,0] * im_height),
                         int(boxes[0,i,1]*im_width),
                         int(boxes[0,i,2] * im_height),
                         int(boxes[0,i,3]*im_width))
 
-        return boxes_list, scores[0].tolist(), [int(x) for x in classes[0].tolist()], int(num[0]), masks
+        return boxes_list, scores[0].tolist(), [int(x) for x in classes[0].tolist()], int(num[0]), detection_masks
 
     def close(self):
         self.sess.close()
