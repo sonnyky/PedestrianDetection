@@ -98,6 +98,8 @@ if __name__ == "__main__":
     align_to = rs.stream.color
     align = rs.align(align_to)
 
+    kernel = np.ones((10, 10), np.uint8)
+
     while True:
 
         # Wait for a coherent pair of frames: depth and color
@@ -146,47 +148,9 @@ if __name__ == "__main__":
                     # Find contour of people inside the boxes (set ROI)
                     human_roi = img[box[0]:box[2], box[1]:box[3]]
 
+                    # Get 3D Array of 3D points inside ROI
 
-                    #converted = cv2.cvtColor(human_roi, cv2.COLOR_BGR2HSV)
-                    #skinMask = cv2.inRange(converted, lower, upper)
-
-                    # apply a series of erosions and dilations to the mask
-                    # using an elliptical kernel
-                    #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
-                    #skinMask = cv2.erode(skinMask, kernel, iterations=2)
-                    #skinMask = cv2.dilate(skinMask, kernel, iterations=2)
-
-                    # blur the mask to help remove noise, then apply the
-                    # mask to the frame
-                    #skinMask = cv2.GaussianBlur(skinMask, (3, 3), 0)
-                    #skin = cv2.bitwise_and(human_roi, human_roi, mask=skinMask)
-
-                    #cv2.imshow("images", np.hstack([human_roi, skin]))
-
-
-                    human_roi_gray = cv2.cvtColor(human_roi, cv2.COLOR_BGR2GRAY);
-                    #ret, thresh = cv2.threshold(human_roi_gray, 127, 255, 0)
-
-                    # Detect faces in the image
-                    faces = faceCascade.detectMultiScale(
-                        human_roi_gray,
-                        scaleFactor=1.1,
-                        minNeighbors=5
-                    )
-                    print ("Found {0} faces!".format(len(faces)))
-                    thresh = cv2.Canny(human_roi_gray,180,200)
-                    cv2.imshow("images", thresh)
-
-
-                    # show the skin in the image along with the mask
-
-                # Find contours in the roi
-                    _, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                    cv2.drawContours(img, contours, -1, (128, 255, 255),
-                    3, cv2.LINE_AA, hierarchy, 2, (box[1],box[0]) )
-
-
-####################################################################################################################
+                ####################################################################################################################
 
                 midpoint_x = np.int(box[1] + ((box[3] - box[1]) / 2))
 
