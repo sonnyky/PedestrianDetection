@@ -94,11 +94,12 @@ if __name__ == "__main__":
     odapi = DetectorAPI(path_to_ckpt=model_path)
     threshold = 0.9
 
-    trackerType = "CSRT"
+    trackerType = "MEDIANFLOW"
 
     ## Select boxes
     bboxes = []
     colors = []
+    persons = []
 
         # Configure depth and color streams
     pipeline = rs.pipeline()
@@ -125,9 +126,6 @@ if __name__ == "__main__":
     # The "align_to" is the stream type to which we plan to align depth frames.
     align_to = rs.stream.color
     align = rs.align(align_to)
-
-    # Create MultiTracker object
-    multiTracker = cv2.MultiTracker_create()
 
     # Wait for a coherent pair of frames: depth and color
     frames = pipeline.wait_for_frames()
@@ -177,12 +175,15 @@ if __name__ == "__main__":
                 num_of_people += 1
                 box = boxes[i]
                 cv2.rectangle(img,(box[1],box[0]),(box[3],box[2]),(255,0,0),2)
-                human_roi = img[box[0]:box[2], box[1]:box[3]]
-                if len(bboxes) < num_of_people:
+                human_roi = (box[1],box[0], box[3] - box[1],box[2] - box[1])
+                if len(bboxes) < num_of_people and box[3] < 1150 and box[1] > 150:
                     print("there are untracked people")
                     bboxes.append(human_roi)
+                    one_tracker = createTrackerByName(trackerType)
+                    one_tracker.init(img, human_roi)
+                    persons.append(one_tracker)
                     #print("current bboxes length : ", len(bboxes))
-                    #colors.append((randint(64, 255), randint(64, 255), randint(64, 255)))
+                    colors.append((np.random.randint(64, 255), np.random.randint(64, 255), np.random.randint(64, 255)))
                     #multiTracker.add(createTrackerByName(trackerType), img, human_roi)
 
                 # get distance of person from the camera, from the middle pixel
@@ -200,6 +201,16 @@ if __name__ == "__main__":
                 height_str = str(height_estimate) + " m"
                 cv2.putText(img, height_str, (box[1], box[0] + 35), cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
 ####################################################################################################################
+
+        for j in range(len(persons)):
+            ok, bbox = persons[j].update(img)
+            if ok:
+                p1 = (int(bbox[0]), int(bbox[1]))
+                p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
+                cv2.rectangle(img, p1, p2, colors[j], 2, 1)
+            else:
+                # Tracking failure
+                cv2.putText(img, "Tracking failure detected", (100, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
         #print("Number of people detected : ", num_of_people)
 
         cv2.imshow("preview", img)
