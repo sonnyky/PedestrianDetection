@@ -96,6 +96,9 @@ if __name__ == "__main__":
 
     trackerType = "MEDIANFLOW"
 
+    ## Counter data holder
+    people_count = 0
+
     ## Select boxes
     bboxes = []
     colors = []
@@ -176,7 +179,7 @@ if __name__ == "__main__":
                 box = boxes[i]
                 cv2.rectangle(img,(box[1],box[0]),(box[3],box[2]),(255,0,0),2)
                 human_roi = (box[1],box[0], box[3] - box[1],box[2] - box[1])
-                if len(bboxes) < num_of_people and box[3] < 1150 and box[1] > 150:
+                if len(bboxes) < num_of_people and box[3] < 620 and box[1] > 50:
                     print("there are untracked people")
                     bboxes.append(human_roi)
                     one_tracker = createTrackerByName(trackerType)
@@ -208,10 +211,21 @@ if __name__ == "__main__":
                 p1 = (int(bbox[0]), int(bbox[1]))
                 p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
                 cv2.rectangle(img, p1, p2, colors[j], 2, 1)
+                if bbox[0] < 50 or  bbox[0] + bbox[2] > 620:
+                    people_count += 1
+                    persons.pop(j)
+                    num_of_people -= 1
+                    bboxes.pop(j)
             else:
                 # Tracking failure
                 cv2.putText(img, "Tracking failure detected", (100, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+                persons.pop(j)
+                num_of_people -= 1
+                bboxes.pop(j)
         #print("Number of people detected : ", num_of_people)
+
+        people_counter_string = str(people_count) + " people"
+        cv2.putText(img, people_counter_string, (50, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
 
         cv2.imshow("preview", img)
         key = cv2.waitKey(1)
