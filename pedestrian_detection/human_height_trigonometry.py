@@ -1,14 +1,20 @@
-    # Code adapted from Tensorflow Object Detection Framework
+# Code adapted from Tensorflow Object Detection Framework
 # https://github.com/tensorflow/models/blob/master/research/object_detection/object_detection_tutorial.ipynb
 # Tensorflow Object Detection Detector
 
-# Person detection with tensorflow and estimate height from bounding box height
+# Person detection with tensorflow and estimate height by using trigonometry on the bounding box.
+# need to have knowledge of camera height and pitch
+
+# A simple webcam is used
 
 import numpy as np
 import tensorflow as tf
 import cv2
 import time
 import pyrealsense2 as rs
+import sys
+sys.path.insert(0,'D:/Workspace/PedestrianDetection/pedestrian_detection/utils')
+from measurement import measurement
 
 trackerTypes = ['BOOSTING', 'MIL', 'KCF', 'TLD', 'MEDIANFLOW', 'GOTURN', 'MOSSE', 'CSRT']
 
@@ -97,6 +103,10 @@ if __name__ == "__main__":
     threshold = 0.9
 
     trackerType = "MEDIANFLOW"
+
+    print('Starting application ...')
+    msr = measurement()
+    msr.test_call_method()
 
     ## Counter data holder
     people_count = 0
