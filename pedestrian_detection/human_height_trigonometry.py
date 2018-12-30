@@ -11,7 +11,6 @@ import numpy as np
 import tensorflow as tf
 import cv2
 import time
-import pyrealsense2 as rs
 import sys
 sys.path.insert(0,'D:/Workspace/PedestrianDetection/pedestrian_detection/utils')
 from measurement import measurement
@@ -116,70 +115,11 @@ if __name__ == "__main__":
     colors = []
     persons = []
 
-        # Configure depth and color streams
-    pipeline = rs.pipeline()
-    config = rs.config()
-    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-
-    # Start streaming
-
-    profile = pipeline.start(config)
-
-    # Getting the depth sensor's depth scale (see rs-align example for explanation)
-    depth_sensor = profile.get_device().first_depth_sensor()
-    depth_scale = depth_sensor.get_depth_scale()
-    print("Depth Scale is: ", depth_scale)
-
-    # We will be removing the background of objects more than
-    #  clipping_distance_in_meters meters away
-    clipping_distance_in_meters = 1  # 1 meter
-    clipping_distance = clipping_distance_in_meters / depth_scale
-
-    # Create an align object
-    # rs.align allows us to perform alignment of depth frames to others frames
-    # The "align_to" is the stream type to which we plan to align depth frames.
-    align_to = rs.stream.color
-    align = rs.align(align_to)
-
-    # Wait for a coherent pair of frames: depth and color
-    frames = pipeline.wait_for_frames()
-    depth_frame = frames.get_depth_frame()
-    color_frame = frames.get_color_frame()
-    # Intrinsics & Extrinsics
-    depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
-    color_intrin = color_frame.profile.as_video_stream_profile().intrinsics
-    depth_to_color_extrin = depth_frame.profile.get_extrinsics_to(
-        color_frame.profile)
-
-    print("focal length %s an d%s ", depth_intrin.fx, depth_intrin.fy)
+    cap = cv2.VideoCapture(0)
 
     while True:
 
-        # Wait for a coherent pair of frames: depth and color
-        frames = pipeline.wait_for_frames()
-        depth_frame = frames.get_depth_frame()
-        color_frame = frames.get_color_frame()
-        if not depth_frame or not color_frame:
-            continue
-
-
-        #####################################################################
-
-        # Align the depth frame to color frame
-        aligned_frames = align.process(frames)
-
-        # Get aligned frames
-        aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
-        color_frame = aligned_frames.get_color_frame()
-
-        depth_image = np.asanyarray(aligned_depth_frame.get_data())
-        color_image = np.asanyarray(color_frame.get_data())
-
-        ######################################################################
-
-        img = color_image
-
+        r, img = cap.read()
         boxes, scores, classes, num = odapi.processFrame(img)
 
         # Visualization of the results of a detection.
@@ -204,18 +144,6 @@ if __name__ == "__main__":
                 # get distance of person from the camera, from the middle pixel
                 midpoint_x = np.int(box[1] + ((box[3] - box[1]) / 2))
                 midpoint_y = np.int(box[0] + ((box[2] - box[0]) / 2))
-
-####################################################################################################################
-
-
-                depth_mid =aligned_depth_frame.get_distance(midpoint_x, midpoint_y)
-                #print("human distance from camera : ", depth_mid)
-
-                height_estimate = (depth_mid * (box[2] - box[0]))/depth_intrin.fx
-                #print("human height estimate : ", height_estimate)
-                height_str = str(height_estimate) + " m"
-                cv2.putText(img, height_str, (box[1], box[0] + 35), cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
-####################################################################################################################
 
         for j in range(len(persons)):
             ok, bbox = persons[j].update(img)
