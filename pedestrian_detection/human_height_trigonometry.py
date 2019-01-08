@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
     print('Starting application ...')
     msr = measurement()
-    msr.test_call_method()
+    msr.test_call_method(10, 15)
 
     ## Counter data holder
     people_count = 0
@@ -151,7 +151,20 @@ if __name__ == "__main__":
                 p1 = (int(bbox[0]), int(bbox[1]))
                 p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
                 cv2.rectangle(img, p1, p2, colors[j], 2, 1)
-                if bbox[0] < 50 or  bbox[0] + bbox[2] > 620:
+
+                # Calculate detected person's height here which is estimated from the bounding box height
+                msr.set_image_positions(bbox[0], bbox[1])
+                cv2.circle(img, (int(bbox[0]), int(bbox[1])), 5, (0,255,0), -1)
+                horizontal_angle = msr.calc_horizontal_angle()
+                vertical_angle = msr.calc_vertical_angle()
+                #print("horizontal angle is : ", horizontal_angle)
+                #print("vertical angle is : ", vertical_angle)
+
+                position = msr.calc_3d_position(vertical_angle, horizontal_angle)
+                debug_string = "3d position of point : " + str(position[0]) + ", " + str(position[1]) + ", " + str(position[2])
+                print(debug_string)
+
+                if bbox[0] < 50 or bbox[0] + bbox[2] > 620:
                     people_count += 1
                     persons.pop(j)
                     num_of_people -= 1
