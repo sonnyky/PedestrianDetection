@@ -45,6 +45,29 @@ def createTrackerByName(trackerType):
 
     return tracker
 
+def click(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        refPt = [(x, y)]
+        measure_instance = measurement()
+        measure_instance.set_image_positions(refPt[0][0], refPt[0][1])
+        measure_instance.set_camera_parameters(43.603, 43.603)
+        measure_instance.set_camera_pitch_and_height(60, 840)
+
+        horizontal_angle = measure_instance.calc_horizontal_angle()
+        vertical_angle = measure_instance.calc_vertical_angle()
+
+        #print("horizontal angle : " + str(horizontal_angle))
+        #print("vertical angle : " + str(vertical_angle))
+
+        position_top = measure_instance.calc_3d_position(vertical_angle, horizontal_angle)
+        debug_string = "3d position of point : " + str(position_top[0]) + ", " + str(
+            position_top[1]) + ", " + str(position_top[2])
+        print(debug_string)
+
+        #object_height = measure_instance.calc_height_object_on_floor(position_floor[1], position_top[1])
+        #print("Estimated human height is : " + str(object_height))
+        #print(debug_string)
+
 class DetectorAPI:
     def __init__(self, path_to_ckpt):
         self.path_to_ckpt = path_to_ckpt
@@ -100,7 +123,6 @@ if __name__ == "__main__":
     model_path = 'D:/Workspace/PedestrianDetection/pedestrian_detection/frozen_inference_graph.pb'
     odapi = DetectorAPI(path_to_ckpt=model_path)
     threshold = 0.9
-
     trackerType = "MEDIANFLOW"
 
     print('Starting application ...')
@@ -115,7 +137,10 @@ if __name__ == "__main__":
     colors = []
     persons = []
 
-    cap = cv2.VideoCapture(0)
+    cv2.namedWindow("image")
+    cv2.setMouseCallback("image", click)
+
+    cap = cv2.VideoCapture(1)
 
     while True:
 
@@ -146,41 +171,55 @@ if __name__ == "__main__":
                 midpoint_y = np.int(box[0] + ((box[2] - box[0]) / 2))
 
         for j in range(len(persons)):
-            ok, bbox = persons[j].update(img)
-            if ok:
-                p1 = (int(bbox[0]), int(bbox[1]))
-                p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
-                cv2.rectangle(img, p1, p2, colors[j], 2, 1)
+            if j < len(persons):
+                ok, bbox = persons[j].update(img)
+                if ok:
+                    p1 = (int(bbox[0]), int(bbox[1]))
+                    p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
+                    cv2.rectangle(img, p1, p2, colors[j], 2, 1)
 
-                # Calculate detected person's height here which is estimated from the bounding box height
-                msr.set_image_positions(bbox[0], bbox[1])
-                cv2.circle(img, (int(bbox[0]), int(bbox[1])), 5, (0,255,0), -1)
-                horizontal_angle = msr.calc_horizontal_angle()
-                vertical_angle = msr.calc_vertical_angle()
-                #print("horizontal angle is : ", horizontal_angle)
-                #print("vertical angle is : ", vertical_angle)
+                    # Calculate detected person's height here which is estimated from the bounding box height
+                    msr.set_camera_parameters(43.603, 43.603)
+                    msr.set_camera_pitch_and_height(60, 2340)
 
-                position = msr.calc_3d_position(vertical_angle, horizontal_angle)
-                debug_string = "3d position of point : " + str(position[0]) + ", " + str(position[1]) + ", " + str(position[2])
-                print(debug_string)
+                    msr.set_image_positions(bbox[0]+(bbox[2]/2), bbox[1])
 
-                if bbox[0] < 50 or bbox[0] + bbox[2] > 620:
-                    people_count += 1
+                    cv2.circle(img, (int(bbox[0] + (bbox[2]/2)), int(bbox[1])), 5, (0,255,0), -1)
+                    horizontal_angle = msr.calc_horizontal_angle()
+                    vertical_angle = msr.calc_vertical_angle()
+                    position_top = msr.calc_3d_position(vertical_angle, horizontal_angle)[:]
+
+
+                    msr.set_image_positions(bbox[0] + (bbox[2]/2), bbox[1] + bbox[3])
+                    cv2.circle(img, (int(bbox[0] + (bbox[2] / 2)), int(bbox[1]+bbox[3])), 5, (0, 255, 0), -1)
+
+                    horizontal_angle = msr.calc_horizontal_angle()
+                    vertical_angle = msr.calc_vertical_angle()
+
+                    position_floor = msr.calc_3d_position(vertical_angle, horizontal_angle)
+
+                    human_height = msr.calc_height_object_on_floor(position_floor[1], position_top[1])
+                    people_height_string = str(human_height) + " m"
+                    cv2.putText(img, people_height_string, (int(bbox[0]), int(bbox[1] - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+
+
+                    if bbox[0] < 50 or bbox[0] + bbox[2] > 620:
+                        people_count += 1
+                        persons.pop(j)
+                        num_of_people -= 1
+                        bboxes.pop(j)
+                else:
+                    # Tracking failure
+                    cv2.putText(img, "Tracking failure detected", (100, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
                     persons.pop(j)
                     num_of_people -= 1
                     bboxes.pop(j)
-            else:
-                # Tracking failure
-                cv2.putText(img, "Tracking failure detected", (100, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
-                persons.pop(j)
-                num_of_people -= 1
-                bboxes.pop(j)
         #print("Number of people detected : ", num_of_people)
-
         people_counter_string = str(people_count) + " people"
-        cv2.putText(img, people_counter_string, (50, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+        cv2.putText(img, people_counter_string, (50,30), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+                    (0, 0, 255), 2)
 
-        cv2.imshow("preview", img)
+        cv2.imshow("image", img)
         key = cv2.waitKey(1)
         if key & 0xFF == ord('q'):
             break
