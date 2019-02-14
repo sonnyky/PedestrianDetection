@@ -140,7 +140,7 @@ if __name__ == "__main__":
     cv2.namedWindow("image")
     cv2.setMouseCallback("image", click)
 
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
 
     while True:
 
