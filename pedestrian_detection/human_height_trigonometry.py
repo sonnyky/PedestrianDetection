@@ -155,7 +155,7 @@ if __name__ == "__main__":
                 num_of_people += 1
                 box = boxes[i]
                 cv2.rectangle(img,(box[1],box[0]),(box[3],box[2]),(255,0,0),2)
-                human_roi = (box[1],box[0], box[3] - box[1],box[2] - box[1])
+                human_roi = (box[1],box[0], box[3] - box[1],box[2] - box[0])
                 if len(bboxes) < num_of_people and box[3] < 620 and box[1] > 50:
                     print("there are untracked people")
                     bboxes.append(human_roi)
