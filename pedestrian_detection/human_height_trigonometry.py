@@ -199,7 +199,7 @@ if __name__ == "__main__":
                     position_floor = msr.calc_3d_position(vertical_angle, horizontal_angle)
 
                     human_height = msr.calc_height_object_on_floor(position_floor[1], position_top[1])
-                    people_height_string = str(human_height) + " m"
+                    people_height_string = str(human_height) + " mm"
                     cv2.putText(img, people_height_string, (int(bbox[0]), int(bbox[1] - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
 
 
